@@ -1,10 +1,11 @@
 import { useLocalSearchParams } from 'expo-router'
 import styled, { css } from 'styled-components/native'
-import { View } from 'react-native'
+import { ScrollView, View } from 'react-native'
 import { useRouter, Link, Stack } from 'expo-router'
 import { HeaderBackButton } from '@react-navigation/elements'
 import theme from 'styles/theme'
 import { CandlestickChart } from 'react-native-wagmi-charts'
+import { useQuery } from '@tanstack/react-query'
 
 const Wrapper = styled.SafeAreaView`
   ${({ theme }) => css`
@@ -34,38 +35,7 @@ const Text = styled.Text`
   `}
 `
 
-const data = [
-  {
-    timestamp: 1625945400000,
-    open: 33575.25,
-    high: 33600.52,
-    low: 33475.12,
-    close: 33520.11
-  },
-  {
-    timestamp: 1625946300000,
-    open: 33545.25,
-    high: 33560.52,
-    low: 33510.12,
-    close: 33520.11
-  },
-  {
-    timestamp: 1625947200000,
-    open: 33510.25,
-    high: 33515.52,
-    low: 33250.12,
-    close: 33250.11
-  },
-  {
-    timestamp: 1625948100000,
-    open: 33215.25,
-    high: 33430.52,
-    low: 33215.12,
-    close: 33420.11
-  }
-]
-
-function Chart() {
+function Chart({ data }) {
   return (
     <CandlestickChart.Provider data={data}>
       <CandlestickChart>
@@ -78,9 +48,28 @@ function Chart() {
   )
 }
 
+function transformCandlesData(data) {
+  return data?.candles?.map((candle) => ({
+    ...candle,
+    timestamp: new Date(candle.startedAt).getTime()
+  }))
+}
+
 export default function TradeScreen() {
   const { pair } = useLocalSearchParams()
   const router = useRouter()
+
+  const candles = useQuery({
+    queryKey: ['candles', pair],
+    queryFn: () =>
+      fetch(
+        `https://api.stage.dydx.exchange/v3/candles/${pair}?resolution=1HOUR&limit=30`
+      ).then((res) => res.json()),
+    onSuccess: (data) => {
+      console.log(JSON.stringify(data, null, 2))
+    },
+    select: transformCandlesData
+  })
 
   return (
     <Wrapper>
@@ -99,7 +88,7 @@ export default function TradeScreen() {
         }}
       />
 
-      <Chart />
+      <ScrollView>{candles.data && <Chart data={candles.data} />}</ScrollView>
     </Wrapper>
   )
 }
