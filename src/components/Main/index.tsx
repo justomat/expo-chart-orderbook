@@ -47,7 +47,7 @@ const Pair = styled.View`
 `
 
 function transformMarketsData(data) {
-  return Object.values(data?.markets)
+  return Object.values(data?.markets).sort((a, b) => b.volume24H - a.volume24H)
 }
 
 export default function App() {
