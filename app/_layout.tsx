@@ -5,13 +5,18 @@ import { ThemeProvider } from 'styled-components/native'
 import theme from 'styles/theme'
 
 import { Slot } from 'expo-router'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+
+const queryClient = new QueryClient()
 
 // Use this file to wrap your global providers.
 const RootLayout = () => {
   return (
-    <ThemeProvider theme={theme}>
-      <Slot />
-    </ThemeProvider>
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider theme={theme}>
+        <Slot />
+      </ThemeProvider>
+    </QueryClientProvider>
   )
 }
 
