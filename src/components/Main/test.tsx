@@ -7,6 +7,6 @@ import Main from '.'
 describe('<Main />', () => {
   it('has 1 child', () => {
     render(<Main />)
-    expect(screen.getByText(/React 18/i))
+    expect(screen.getByText(/Trading Pairs/i))
   })
 })
