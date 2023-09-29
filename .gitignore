@@ -1,0 +1,8 @@
+# Dependencies
+node_modules
+
+# Tests
+coverage
+
+# MacOS
+.DS_Store
