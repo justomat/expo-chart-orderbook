@@ -1,5 +1,7 @@
+import { useQuery } from '@tanstack/react-query'
+import { Link, Stack } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
-import { FlatList, TouchableHighlight } from 'react-native'
+import { FlatList, Platform, Pressable, StyleSheet, View } from 'react-native'
 import styled, { css } from 'styled-components/native'
 
 const Wrapper = styled.SafeAreaView`
@@ -13,11 +15,7 @@ const Wrapper = styled.SafeAreaView`
 const Title = styled.Text`
   ${({ theme }) => css`
     color: ${theme.colors.uiTextPrimary};
-    text-align: center;
-    font-size: 52px;
     font-weight: 700;
-
-    margin-bottom: 24px;
   `}
 `
 
@@ -25,45 +23,101 @@ const Text = styled.Text`
   ${({ theme }) => css`
     color: ${theme.colors.uiTextPrimary};
     font-size: 16px;
-    margin-bottom: 8px;
     font-weight: 300;
   `}
 `
 
+const PriceText = (props) => {
+  const up = props.children > 0
+  const color = up ? 'palegreen' : 'crimson'
+  // const arrow = up ? '▲' : '▼'
+  const arrow = up ? '↑' : '↓'
+  return (
+    <Text {...props} style={{ ...props.style, color }}>{`${arrow} ${Number(
+      props.children
+    ).toFixed(2)}%`}</Text>
+  )
+}
+
 const Pair = styled.View`
-  padding: 16px;
+  padding: 12px 24px;
   flex-direction: row;
   justify-content: space-between;
+  align-items: center;
 `
+
+function transformMarketsData(data) {
+  return Object.values(data?.markets)
+}
+
 export default function App() {
-  const pairs = [
-    { name: 'BTC/USD', price: 50000 },
-    { name: 'ETH/USD', price: 3000 },
-    { name: 'LINK/USD', price: 500 }
-  ]
+  const markets = useQuery({
+    queryKey: ['markets'],
+    queryFn: async () =>
+      fetch(`https://api.stage.dydx.exchange/v3/markets`).then((res) =>
+        res.json()
+      ),
+    select: transformMarketsData
+  })
 
   const renderPair = ({ item }) => (
-    <TouchableHighlight
-      style={{ width: '100%' }}
-      onPress={() => console.log(`Pressed ${item.name}`)}
+    <Link
+      href={{
+        pathname: '/trade/[pair]',
+        params: { pair: item.market }
+      }}
+      asChild
     >
-      <Pair>
-        <Text>{item.name}</Text>
-        <Text>{item.price}</Text>
-      </Pair>
-    </TouchableHighlight>
+      <Pressable>
+        <Pair>
+          <Text
+            style={{
+              fontFamily: Platform.select({
+                ios: 'Courier New',
+                android: 'monospace',
+                default: ''
+              }),
+              fontSize: 24,
+              fontWeight: 500
+            }}
+          >
+            {item.market}
+          </Text>
+          <View style={{ alignItems: 'flex-end' }}>
+            <Text style={{ fontSize: 16, letterSpacing: 0.7 }}>
+              ${Number(item.indexPrice)}
+            </Text>
+            <PriceText style={{ fontSize: 12 }}>
+              {item.priceChange24H}
+            </PriceText>
+          </View>
+        </Pair>
+      </Pressable>
+    </Link>
   )
 
   return (
     <Wrapper>
+      <Stack.Screen
+        options={{
+          title: 'Markets',
+          headerTitle: () => <Title>Trading Pairs</Title>
+        }}
+      />
       <StatusBar style="light" />
-      <Title>Trading Pairs</Title>
 
       <FlatList
         style={{ width: '100%' }}
-        contentContainerStyle={{}}
-        data={pairs}
+        data={markets.data || []}
         renderItem={renderPair}
+        ItemSeparatorComponent={() => (
+          <View
+            style={{
+              height: StyleSheet.hairlineWidth,
+              backgroundColor: 'white'
+            }}
+          />
+        )}
       />
     </Wrapper>
   )
