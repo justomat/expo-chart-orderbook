@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link, Stack } from 'expo-router'
-import { StatusBar } from 'expo-status-bar'
 import { FlatList, Platform, Pressable, StyleSheet, View } from 'react-native'
 import styled, { css } from 'styled-components/native'
 
@@ -104,7 +103,6 @@ export default function App() {
           headerTitle: () => <Title>Trading Pairs</Title>
         }}
       />
-      <StatusBar style="light" />
 
       <FlatList
         style={{ width: '100%' }}
