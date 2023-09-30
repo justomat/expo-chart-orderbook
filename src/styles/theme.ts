@@ -9,7 +9,8 @@ const theme = {
   },
   colors: {
     mainBg: '#171717',
-    uiTextPrimary: '#EDEDED'
+    uiTextPrimary: '#EDEDED',
+    uiTextSecondary: '#FBFAF5'
   },
   gradients: {},
   spacings: {},
