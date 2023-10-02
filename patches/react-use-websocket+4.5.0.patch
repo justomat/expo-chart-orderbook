@@ -1,0 +1,22 @@
+diff --git a/node_modules/react-use-websocket/src/lib/use-websocket.ts b/node_modules/react-use-websocket/src/lib/use-websocket.ts
+index 3af1cfe..83f57ba 100644
+--- a/node_modules/react-use-websocket/src/lib/use-websocket.ts
++++ b/node_modules/react-use-websocket/src/lib/use-websocket.ts
+@@ -22,16 +22,7 @@ export const useWebSocket = <T = unknown>(
+ ): WebSocketHook<T> => {
+   const [lastMessage, setLastMessage] = useState<WebSocketEventMap['message'] | null>(null);
+   const [readyState, setReadyState] = useState<ReadyStateState>({});
+-  const lastJsonMessage: T = useMemo(() => {
+-    if (lastMessage) {
+-      try {
+-        return JSON.parse(lastMessage.data);
+-      } catch (e) {
+-        return UNPARSABLE_JSON_OBJECT;
+-      }
+-    }
+-    return null; 
+-  },[lastMessage]);
++  const lastJsonMessage = null as T;
+   const convertedUrl = useRef<string | null>(null);
+   const webSocketRef = useRef<WebSocketLike | null>(null);
+   const startRef = useRef<() => void>(() => void 0);
