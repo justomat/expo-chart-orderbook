@@ -1,19 +1,152 @@
 import { HeaderBackButton } from '@react-navigation/elements'
-import { useQuery } from '@tanstack/react-query'
+import { SortedMap, Stream } from '@rimbu/core'
+import Chart from 'components/Chart'
+import { API_HOST } from 'constants'
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router'
-import { useState } from 'react'
-import { Dimensions, ScrollView, TouchableOpacity, View } from 'react-native'
-import Animated, { useAnimatedStyle } from 'react-native-reanimated'
-import { AnimatedText, CandlestickChart } from 'react-native-wagmi-charts'
+import {
+  memo,
+  startTransition,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState
+} from 'react'
+import {
+  FlatList,
+  InteractionManager,
+  ListRenderItem,
+  Platform,
+  StyleProp,
+  View,
+  ViewStyle
+} from 'react-native'
+import { runOnJS, runOnUI } from 'react-native-reanimated'
 import styled, { css } from 'styled-components/native'
 import theme from 'styles/theme'
+import { Order } from 'types/Orderbook'
 
-const API_HOST = `api.stage.dydx.exchange`
-
-const HStack = styled.View`
-  flex-direction: row;
-  justify-content: space-around;
+const Mono = styled.Text`
+  color: white;
+  font-family: ${Platform.select({
+    ios: 'Courier New',
+    android: 'monospace'
+  })};
+  font-weight: 500;
 `
+
+interface OrderProps {
+  price: Order['price']
+  size: Order['size']
+  offset?: Order['offset']
+  style?: StyleProp<ViewStyle>
+}
+
+const OrderView = memo(
+  function Order({ price, size, style }: OrderProps) {
+    return (
+      <View style={[style, { justifyContent: 'space-between' }]}>
+        <Mono>${Number(price)}</Mono>
+        <Mono>{Number(size)}</Mono>
+      </View>
+    )
+  },
+  // Only re-render if there's no previous offset or next offset is greater than previous offset
+  (prev, next) => !(!prev.offset || Number(next.offset) > Number(prev.offset))
+)
+
+type OrderMap = SortedMap<number, Order>
+
+const sizeIsEmpty = ({ size }) => size === '0'
+
+function merge(
+  current: OrderMap,
+  updates: [Order['price'], Order['size']],
+  offset: Order['offset']
+) {
+  return current.addEntries(
+    updates.map(([price, size]) => [price, { price, size, offset }])
+  )
+}
+
+const delay = (fn) => {
+  return setTimeout(() => {
+    InteractionManager.runAfterInteractions(() => {
+      startTransition(fn)
+    })
+  }, 1000)
+}
+
+const toEntry = (x) => [Number(x.price), x]
+
+function useOrderbook(market: string) {
+  const [bids, setBids] = useState<OrderMap>(SortedMap.empty())
+  const [asks, setAsks] = useState<OrderMap>(SortedMap.empty())
+
+  const handleMessage = useCallback(async (event) => {
+    const { type, contents = {} } = JSON.parse(event.data)
+
+    switch (type) {
+      case 'subscribed': {
+        const bidStream = Stream.fromArray(contents.bids).filterNot(sizeIsEmpty)
+        const askStream = Stream.fromArray(contents.asks).filterNot(sizeIsEmpty)
+
+        // dont let user see empty orderbook, show 5 initial rows
+        const [initialBids, tailBids] = bidStream.splitWhere((_, i) => i === 5)
+        const [initialAsks, tailAsks] = askStream.splitWhere((_, i) => i === 5)
+
+        // high priority state update
+        setBids(SortedMap.from(initialBids.map(toEntry)))
+        setAsks(SortedMap.from(initialAsks.map(toEntry)))
+
+        // low priority state update
+        delay(() => {
+          setBids((prev) => prev.addEntries(tailBids.map(toEntry)))
+          setAsks((prev) => prev.addEntries(tailAsks.map(toEntry)))
+        })
+
+        return
+      }
+      case 'channel_data': {
+        if (!contents.offset) return
+
+        const { bids, asks } = contents
+
+        startTransition(() => {
+          // cheat a little by offloading work to the UI thread, which
+          // should be pretty idle since we're not running any heavy animation
+          if (bids.length) {
+            runOnUI((set) => {
+              set((prev) => merge(prev, bids, contents.offset))
+            })(setBids)
+          }
+          if (asks.length) {
+            runOnUI((set) => {
+              set((prev) => merge(prev, asks, contents.offset))
+            })(setAsks)
+          }
+        })
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    const ws = new WebSocket(`wss://${API_HOST}/v3/ws`)
+    ws.onopen = () => {
+      ws.send(
+        JSON.stringify({
+          type: 'subscribe',
+          channel: 'v3_orderbook',
+          id: market,
+          includeOffsets: true
+        })
+      )
+    }
+    ws.onmessage = handleMessage
+    return () => ws.close()
+  }, [market, handleMessage])
+
+  return useMemo(() => ({ bids, asks }), [bids, asks])
+}
 
 const Wrapper = styled.SafeAreaView`
   ${({ theme }) => css`
@@ -22,154 +155,6 @@ const Wrapper = styled.SafeAreaView`
     align-items: center;
   `}
 `
-
-const Text = styled.Text`
-  ${({ theme }) => css`
-    color: ${theme.colors.uiTextPrimary};
-    font-size: 16px;
-    font-weight: 300;
-  `}
-`
-
-const Stats = ({ color }) => (
-  <HStack>
-    {['open', 'high', 'low', 'close'].map((type) => (
-      <View
-        key={type}
-        style={{
-          flex: 1,
-          paddingVertical: 12,
-          alignItems: 'center',
-          minHeight: 24
-        }}
-      >
-        <Text style={{ color, fontSize: 12 }}>{type}</Text>
-        <CandlestickChart.PriceText type={type} style={{ color }} />
-      </View>
-    ))}
-  </HStack>
-)
-
-const Tooltip = styled.View`
-  top: -50%;
-  left: 8px;
-  width: 75px;
-  border-radius: 3px;
-  background-color: #111;
-`
-
-const DateTime = ({ color }) => (
-  <CandlestickChart.DatetimeText
-    style={{ color, fontSize: 12 }}
-    format={({ value }) => {
-      'worklet'
-      return new Date(value).toLocaleString('id', {
-        dateStyle: 'medium',
-        timeStyle: 'short'
-      })
-    }}
-  />
-)
-
-const Chart = (props) => {
-  const { currentX, currentY } = CandlestickChart.useChart()
-  const price = CandlestickChart.usePrice()
-
-  const showOnChartHover = useAnimatedStyle(
-    () => ({
-      opacity: currentX.value < 0 || currentY.value < 0 ? 0 : 0.8
-    }),
-    [currentX, currentY]
-  )
-
-  const tooltip = (
-    <View>
-      <Tooltip>
-        <AnimatedText
-          text={price.formatted}
-          style={{ padding: 2, color: props.color + 'CC' }}
-        />
-      </Tooltip>
-    </View>
-  )
-
-  return (
-    <View>
-      <Animated.View style={[{ top: 0 }, showOnChartHover]}>
-        <Stats color={props.color} />
-      </Animated.View>
-
-      <CandlestickChart {...props} style={{ marginTop: -36 }}>
-        <CandlestickChart.Candles />
-        <CandlestickChart.Crosshair color={props.color}>
-          {tooltip}
-        </CandlestickChart.Crosshair>
-      </CandlestickChart>
-
-      <Animated.View style={[{ left: 8, bottom: 8 }, showOnChartHover]}>
-        <DateTime color={props.color} />
-      </Animated.View>
-    </View>
-  )
-}
-
-function Switcher({ value, onChange }) {
-  return (
-    <HStack>
-      {['1DAY', '4HOURS', '1HOUR'].map((type) => (
-        <View
-          key={type}
-          style={{
-            flex: 1,
-            paddingVertical: 12,
-            alignItems: 'center',
-            minHeight: 24
-          }}
-        >
-          <View
-            style={{
-              backgroundColor: value === type ? 'blue' : 'transparent',
-              borderRadius: 4
-            }}
-          >
-            <TouchableOpacity onPress={() => onChange(type)}>
-              <Text
-                style={{
-                  fontSize: 12,
-                  fontWeight: 600,
-                  color: theme.colors.uiTextSecondary,
-                  paddingVertical: 6,
-                  paddingHorizontal: 24
-                }}
-              >
-                {type.slice(0, 2)}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      ))}
-    </HStack>
-  )
-}
-
-function OrderBook({ data }) {
-  return (
-    <View style={{ padding: 16, alignItems: 'center', backgroundColor: 'red' }}>
-      <Text style={{}}>Order Book</Text>
-    </View>
-  )
-}
-
-function transformCandlesData(data) {
-  return data?.candles?.map((candle) => ({
-    ...candle,
-    timestamp: new Date(candle.startedAt).getTime(),
-    open: Number(candle.open),
-    high: Number(candle.high),
-    low: Number(candle.low),
-    close: Number(candle.close)
-  }))
-}
 
 type Resolution =
   | '1DAY'
@@ -180,30 +165,60 @@ type Resolution =
   | '5MINS'
   | '1MIN'
 
+const OrderViewWrapper = memo(function OrderViewWrapper({
+  data,
+  reverse
+}: {
+  data: Order | undefined
+  reverse?: boolean
+}) {
+  if (!data) return null
+  return (
+    <OrderView
+      key={`${data.price}`}
+      style={{ flexDirection: reverse ? 'row' : 'row-reverse' }}
+      price={data.price}
+      size={data.size}
+    />
+  )
+})
+
+const OrderbookRow: ListRenderItem<Array<Order | undefined>> = ({
+  item: [bid, ask]
+}) => (
+  <View style={{ flexDirection: 'row', gap: 8 }}>
+    <View style={{ flex: 1 }}>
+      <OrderViewWrapper data={bid} reverse />
+    </View>
+    <View style={{ flex: 1 }}>
+      <OrderViewWrapper data={ask} />
+    </View>
+  </View>
+)
+
 export default function TradeScreen() {
   const { pair } = useLocalSearchParams()
   const router = useRouter()
 
   const [resolution, setResolution] = useState<Resolution>('4HOURS')
+  const changeResolution = useCallback(
+    (r: Resolution) => startTransition(() => setResolution(r)),
+    []
+  )
+
   const [limit] = useState(50)
 
-  const candles = useQuery({
-    queryKey: ['candles', pair, { resolution, limit }],
-    queryFn: async () => {
-      /**
-       * @see https://dydxprotocol.github.io/v3-teacher/?json#get-candles-for-market
-       */
-      const url =
-        `https://${API_HOST}/v3/candles/${pair}?` +
-        new URLSearchParams({ resolution, limit: limit.toString() })
+  const { bids, asks } = useOrderbook(pair)
+  const rows = useMemo(
+    () =>
+      Stream.zip(
+        bids.streamValues(true).filterNot(sizeIsEmpty),
+        asks.streamValues().filterNot(sizeIsEmpty)
+      ).toArray(),
+    [bids, asks]
+  )
 
-      const res = await fetch(url)
-      if (!res.ok) throw new Error('Failed to fetch candles')
-      return res.json()
-    },
-    keepPreviousData: true,
-    select: transformCandlesData
-  })
+  const color = theme.colors.uiTextSecondary
 
   return (
     <Wrapper>
@@ -215,24 +230,28 @@ export default function TradeScreen() {
             return (
               <HeaderBackButton
                 tintColor={theme.colors.uiTextPrimary}
-                onPress={router.back}
+                onPress={() => router.back()}
               />
             )
           }
         }}
       />
 
-      <ScrollView style={{ width: '100%' }} contentContainerStyle={{}}>
-        <CandlestickChart.Provider data={candles.data}>
-          <Chart
-            color={theme.colors.uiTextSecondary}
-            height={Dimensions.get('window').height / 2}
-            width={Dimensions.get('window').width}
-          />
-          <Switcher value={resolution} onChange={setResolution} />
-        </CandlestickChart.Provider>
-        {[] && <OrderBook data={[]} />}
-      </ScrollView>
+      <Chart.Provider params={{ market: pair, limit, resolution }}>
+        <FlatList
+          ListHeaderComponent={
+            <>
+              <Chart.Stats color={color} />
+              <Chart color={color} style={{ marginTop: -36 }} />
+              <Chart.DateTime color={color} />
+              <Chart.Switcher value={resolution} onChange={changeResolution} />
+            </>
+          }
+          data={rows}
+          keyExtractor={([bid, ask]) => `${bid?.price}|${ask?.price}`}
+          renderItem={OrderbookRow}
+        />
+      </Chart.Provider>
     </Wrapper>
   )
 }

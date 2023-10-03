@@ -34,7 +34,7 @@ const PriceText = (props) => {
   return (
     <Text {...props} style={{ ...props.style, color }}>{`${arrow} ${Number(
       props.children
-    ).toFixed(2)}%`}</Text>
+    ).toFixed(2)}`}</Text>
   )
 }
 
@@ -45,9 +45,47 @@ const Pair = styled.View`
   align-items: center;
 `
 
-function transformMarketsData(data) {
-  return Object.values(data?.markets).sort((a, b) => b.volume24H - a.volume24H)
-}
+const Separator = styled.View`
+  height: ${StyleSheet.hairlineWidth}px;
+  background-color: white;
+`
+
+const transformMarketsData = (data) =>
+  Object.values(data?.markets).sort((a, b) => b.volume24H - a.volume24H)
+
+const Market = ({ item }) => (
+  <Link
+    href={{
+      pathname: '/trade/[pair]',
+      params: { pair: item.market }
+    }}
+    asChild
+  >
+    <Pressable>
+      <Pair>
+        <Text
+          style={{
+            fontFamily: Platform.select({
+              ios: 'Courier New',
+              android: 'monospace',
+              default: ''
+            }),
+            fontSize: 24,
+            fontWeight: 500
+          }}
+        >
+          {item.market}
+        </Text>
+        <View style={{ alignItems: 'flex-end' }}>
+          <Text style={{ fontSize: 16, letterSpacing: 0.7 }}>
+            ${Number(item.indexPrice)}
+          </Text>
+          <PriceText style={{ fontSize: 12 }}>{item.priceChange24H}</PriceText>
+        </View>
+      </Pair>
+    </Pressable>
+  </Link>
+)
 
 export default function App() {
   const markets = useQuery({
@@ -58,42 +96,6 @@ export default function App() {
       ),
     select: transformMarketsData
   })
-
-  const renderPair = ({ item }) => (
-    <Link
-      href={{
-        pathname: '/trade/[pair]',
-        params: { pair: item.market }
-      }}
-      asChild
-    >
-      <Pressable>
-        <Pair>
-          <Text
-            style={{
-              fontFamily: Platform.select({
-                ios: 'Courier New',
-                android: 'monospace',
-                default: ''
-              }),
-              fontSize: 24,
-              fontWeight: 500
-            }}
-          >
-            {item.market}
-          </Text>
-          <View style={{ alignItems: 'flex-end' }}>
-            <Text style={{ fontSize: 16, letterSpacing: 0.7 }}>
-              ${Number(item.indexPrice)}
-            </Text>
-            <PriceText style={{ fontSize: 12 }}>
-              {item.priceChange24H}
-            </PriceText>
-          </View>
-        </Pair>
-      </Pressable>
-    </Link>
-  )
 
   return (
     <Wrapper>
@@ -107,15 +109,8 @@ export default function App() {
       <FlatList
         style={{ width: '100%' }}
         data={markets.data || []}
-        renderItem={renderPair}
-        ItemSeparatorComponent={() => (
-          <View
-            style={{
-              height: StyleSheet.hairlineWidth,
-              backgroundColor: 'white'
-            }}
-          />
-        )}
+        renderItem={Market}
+        ItemSeparatorComponent={() => <Separator />}
       />
     </Wrapper>
   )
