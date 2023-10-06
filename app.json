@@ -16,11 +16,9 @@
       "**/*"
     ],
     "ios": {
-      "bundleIdentifier": "com.expochartorderbook.ios",
       "supportsTablet": true
     },
     "android": {
-      "package": "com.expochartorderbook.android",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"

@@ -2,8 +2,6 @@ import { ConfigContext } from 'expo/config'
 
 export default ({ config }: ConfigContext) => ({
   ...config,
-  owner: 'gsu',
-  slug: 'expo-chart-orderbook',
   extra: {
     storybookEnabled: process.env.STORYBOOK_ENABLED,
     eas: {
