@@ -23,6 +23,7 @@
   },
   "dependencies": {
     "@rimbu/core": "^1.1.0",
+    "@shopify/react-native-skia": "0.1.172",
     "@tanstack/react-query": "^4.35.3",
     "@types/lodash": "^4.14.199",
     "expo": "~48.0.6",
@@ -74,6 +75,10 @@
     "plop": "^3.1.2",
     "prettier": "^2.8.4",
     "typescript": "^4.9.4"
+  },
+  "overrides": {
+    "metro": "0.76.0",
+    "metro-resolver": "0.76.0"
   },
   "pnpm": {
     "overrides": {
