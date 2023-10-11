@@ -1,13 +1,14 @@
+import { FlashList } from '@shopify/flash-list'
 import { useQuery } from '@tanstack/react-query'
 import { Link, Stack } from 'expo-router'
-import { FlatList, Platform, Pressable, StyleSheet, View } from 'react-native'
+import { Dimensions, Platform, Pressable, StyleSheet, View } from 'react-native'
 import styled, { css } from 'styled-components/native'
+import orderBy from 'lodash/orderBy'
 
 const Wrapper = styled.SafeAreaView`
   ${({ theme }) => css`
     flex: 1;
     background-color: ${theme.colors.mainBg};
-    align-items: center;
   `}
 `
 
@@ -50,8 +51,10 @@ const Separator = styled.View`
   background-color: white;
 `
 
-const transformMarketsData = (data) =>
-  Object.values(data?.markets).sort((a, b) => b.volume24H - a.volume24H)
+const transformMarketsData = (data) => {
+  const values = Object.values(data?.markets)
+  return orderBy(values, (market) => Number(market['volume24H']), 'desc')
+}
 
 const Market = ({ item }) => (
   <Link
@@ -87,15 +90,21 @@ const Market = ({ item }) => (
   </Link>
 )
 
-export default function App() {
-  const markets = useQuery({
+const fetchMarkets = async () => {
+  const res = await fetch(`https://api.stage.dydx.exchange/v3/markets`)
+  return res.json()
+}
+
+function useMarkets() {
+  return useQuery({
     queryKey: ['markets'],
-    queryFn: async () =>
-      fetch(`https://api.stage.dydx.exchange/v3/markets`).then((res) =>
-        res.json()
-      ),
+    queryFn: fetchMarkets,
     select: transformMarketsData
   })
+}
+
+export default function App() {
+  const markets = useMarkets()
 
   return (
     <Wrapper>
@@ -106,11 +115,11 @@ export default function App() {
         }}
       />
 
-      <FlatList
-        style={{ width: '100%' }}
+      <FlashList
         data={markets.data || []}
         renderItem={Market}
         ItemSeparatorComponent={() => <Separator />}
+        estimatedItemSize={58}
       />
     </Wrapper>
   )
