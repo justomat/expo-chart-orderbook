@@ -12,10 +12,10 @@ type CandleRequestParams = {
 }
 
 /** @see https://dydxprotocol.github.io/v3-teacher/?json#get-candles-for-market */
-function fetchDydxCandleData(options: CandleRequestParams) {
-  const url = `https://${API_HOST}/v3/candles/${options.market}`
+function fetchDydxCandleData(params: CandleRequestParams) {
+  const url = `https://${API_HOST}/v3/candles/${params.market}`
 
-  return fetch(url + '?' + new URLSearchParams(options)).then((res) =>
+  return fetch(url + '?' + new URLSearchParams(params)).then((res) =>
     res.ok ? res.json() : Promise.reject(new Error('Failed to fetch candles'))
   )
 }

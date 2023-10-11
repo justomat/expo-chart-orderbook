@@ -2,10 +2,25 @@ import { ConfigContext } from 'expo/config'
 
 export default ({ config }: ConfigContext) => ({
   ...config,
-  extra: {
-    storybookEnabled: process.env.STORYBOOK_ENABLED,
-    eas: {
-      projectId: 'a90aa7f3-2978-43af-b8aa-50791ee20111'
+  expo: {
+    plugins: [
+      [
+        'expo-build-properties',
+        {
+          ios: {
+            flipper: true
+          }
+        }
+      ]
+    ],
+    ios: {
+      bundleIdentifier: 'com.ultimate-expo-boilerplate.ios'
+    },
+    extra: {
+      storybookEnabled: process.env.STORYBOOK_ENABLED,
+      eas: {
+        projectId: '64a70953-9da5-488a-a247-720726f1a5e0'
+      }
     }
   }
 })

@@ -1,6 +1,7 @@
 import { HeaderBackButton } from '@react-navigation/elements'
 import { SortedMap, Stream } from '@rimbu/core'
 import Chart from 'components/Chart'
+import FastChart from 'components/FastChart'
 import { API_HOST } from 'constants'
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router'
 import {
@@ -12,7 +13,6 @@ import {
   useState
 } from 'react'
 import {
-  FlatList,
   InteractionManager,
   ListRenderItem,
   Platform,
@@ -20,7 +20,7 @@ import {
   View,
   ViewStyle
 } from 'react-native'
-import { runOnJS, runOnUI } from 'react-native-reanimated'
+import { runOnUI } from 'react-native-reanimated'
 import styled, { css } from 'styled-components/native'
 import theme from 'styles/theme'
 import { Order } from 'types/Orderbook'
@@ -206,17 +206,7 @@ export default function TradeScreen() {
     []
   )
 
-  const [limit] = useState(50)
-
-  const { bids, asks } = useOrderbook(pair)
-  const rows = useMemo(
-    () =>
-      Stream.zip(
-        bids.streamValues(true).filterNot(sizeIsEmpty),
-        asks.streamValues().filterNot(sizeIsEmpty)
-      ).toArray(),
-    [bids, asks]
-  )
+  const [limit] = useState(40)
 
   const color = theme.colors.uiTextSecondary
 
@@ -238,19 +228,11 @@ export default function TradeScreen() {
       />
 
       <Chart.Provider params={{ market: pair, limit, resolution }}>
-        <FlatList
-          ListHeaderComponent={
-            <>
-              <Chart.Stats color={color} />
-              <Chart color={color} style={{ marginTop: -36 }} />
-              <Chart.DateTime color={color} />
-              <Chart.Switcher value={resolution} onChange={changeResolution} />
-            </>
-          }
-          data={rows}
-          keyExtractor={([bid, ask]) => `${bid?.price}|${ask?.price}`}
-          renderItem={OrderbookRow}
-        />
+        <FastChart />
+        {/* <Chart.Stats color={color} /> */}
+        {/* <Chart color={color} style={{ marginTop: -36 }} /> */}
+        {/* <Chart.DateTime color={color} /> */}
+        <Chart.Switcher value={resolution} onChange={changeResolution} />
       </Chart.Provider>
     </Wrapper>
   )
