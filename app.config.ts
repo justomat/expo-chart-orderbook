@@ -7,14 +7,17 @@ export default ({ config }: ConfigContext) => ({
       [
         'expo-build-properties',
         {
-          ios: {
-            flipper: true
-          }
+          ios: { flipper: true }
         }
-      ]
+      ],
+      'expo-router'
     ],
+    scheme: 'boilerplate',
     ios: {
-      bundleIdentifier: 'com.ultimate-expo-boilerplate.ios'
+      bundleIdentifier: 'com.ultimateexpoboilerplate.ios'
+    },
+    android: {
+      package: 'com.ultimateexpoboilerplate.android'
     },
     extra: {
       storybookEnabled: process.env.STORYBOOK_ENABLED,

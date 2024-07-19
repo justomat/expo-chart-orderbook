@@ -6,3 +6,6 @@ coverage
 
 # MacOS
 .DS_Store
+
+/ios
+/android

@@ -104,7 +104,7 @@ function useMarkets() {
 }
 
 export default function App() {
-  const markets = useMarkets()
+  // const markets = useMarkets()
 
   return (
     <Wrapper>
@@ -115,12 +115,14 @@ export default function App() {
         }}
       />
 
-      <FlashList
+      <Text>Hello</Text>
+
+      {/* <FlashList
         data={markets.data || []}
         renderItem={Market}
         ItemSeparatorComponent={() => <Separator />}
         estimatedItemSize={58}
-      />
+      /> */}
     </Wrapper>
   )
 }

@@ -211,7 +211,7 @@ export default function TradeScreen() {
   const color = theme.colors.uiTextSecondary
 
   return (
-    <Wrapper>
+    <>
       <Stack.Screen
         options={{
           headerTitle: (pair || '') as string,
@@ -226,14 +226,15 @@ export default function TradeScreen() {
           }
         }}
       />
-
-      <Chart.Provider params={{ market: pair, limit, resolution }}>
-        <FastChart />
-        {/* <Chart.Stats color={color} /> */}
-        {/* <Chart color={color} style={{ marginTop: -36 }} /> */}
-        {/* <Chart.DateTime color={color} /> */}
-        <Chart.Switcher value={resolution} onChange={changeResolution} />
-      </Chart.Provider>
-    </Wrapper>
+      <Wrapper>
+        {/* <FastChart /> */}
+        <Chart.Provider params={{ market: pair, limit, resolution }}>
+          {/* <Chart.Stats color={color} /> */}
+          {/* <Chart color={color} style={{ marginTop: -36 }} /> */}
+          {/* <Chart.DateTime color={color} /> */}
+          <Chart.Switcher value={resolution} onChange={changeResolution} />
+        </Chart.Provider>
+      </Wrapper>
+    </>
   )
 }
